@@ -15,7 +15,7 @@ A corporate-themed Snake and Ladders game built using HTML, CSS, and JavaScript.
 - JavaScript
 
 ## How to Run
-Open `human-hustle.html` in any browser.
+Open `index.html` in any browser.
 
 ## Author
 Sakshi Pasunuri
