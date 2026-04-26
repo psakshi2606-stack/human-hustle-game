@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human Hustle – Rise in the Corporate World</title>
+    <!-- Tailwind CSS for modern UI layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --corp-blue: #1E3A8A;
+            --corp-grey: #6B7280;
+            --corp-light: #F3F4F6;
+            --success: #10B981;
+            --danger: #EF4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #1f2937;
+            overflow-x: hidden;
+        }
+
+        /* Board Styling */
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            width: min(90vw, 600px);
+            height: min(90vw, 600px);
+            border: 4px solid var(--corp-blue);
+            background: white;
+            position: relative;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .cell {
+            border: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            position: relative;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .cell-label {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            color: #9ca3af;
+        }
+
+        /* Career Tiers Styling */
+        .tier-bg-0 { background-color: #f9fafb; } /* Graduate */
+        .tier-bg-1 { background-color: #eff6ff; } /* Intern */
+        .tier-bg-2 { background-color: #dbeafe; } /* Junior */
+        .tier-bg-3 { background-color: #bfdbfe; } /* Associate */
+        .tier-bg-4 { background-color: #93c5fd; } /* Sr Associate */
+        .tier-bg-5 { background-color: #60a5fa; } /* Lead */
+        .tier-bg-6 { background-color: #3b82f6; } /* Asst Mgr */
+        .tier-bg-7 { background-color: #2563eb; color: white; } /* Manager */
+        .tier-bg-8 { background-color: #1d4ed8; color: white; } /* Director */
+        .tier-bg-9 { background-color: #1e3a8a; color: white; } /* CEO */
+
+        /* Player Tokens */
+        .player-token {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid white;
+            position: absolute;
+            z-index: 50;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .active-turn {
+            ring: 4px solid #fbbf24;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(251, 191, 36, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+        }
+
+        /* Dice Animation */
+        .dice {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border: 3px solid var(--corp-blue);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .dice:active { transform: scale(0.9); }
+        .rolling { animation: roll 0.5s infinite; }
+
+        @keyframes roll {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(90deg); }
+            50% { transform: rotate(180deg); }
+            75% { transform: rotate(270deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Overlays */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 100%;
+            padding: 30px;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Connections (Ladders/Snakes) */
+        .connection-icon {
+            font-size: 1.2rem;
+            z-index: 10;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            width: 100%;
+            height: 12px;
+            background: #e5e7eb;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--corp-blue);
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="app" class="max-w-6xl mx-auto">
+        
+        <!-- WELCOME SCREEN -->
+        <div id="welcome-screen" class="overlay">
+            <div class="modal-content text-center">
+                <div class="flex flex-col items-center mb-6">
+                    <div class="text-6xl mb-2">📈</div>
+                    <h1 class="text-4xl font-bold text-blue-900 leading-tight">HUMAN HUSTLE</h1>
+                    <p class="text-gray-500 font-semibold tracking-widest">CLIMB YOUR CAREER</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <button onclick="showModeSelection()" class="w-full bg-blue-800 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-900 transition-colors shadow-lg">
+                        START NEW CAREER
+                    </button>
+                    <p class="text-sm text-gray-400">Can you make it to CEO?</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODE SELECTION -->
+        <div id="mode-screen" class="overlay hidden">
+            <div class="modal-content">
+                <h2 class="text-2xl font-bold text-center mb-6">Choose Career Path</h2>
+                <div class="grid grid-cols-1 gap-4">
+                    <button onclick="selectMode('pvp')" class="p-4 border-2 border-blue-100 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left flex items-center">
+                        <span class="text-3xl mr-4">👥</span>
+                        <div>
+                            <div class="font-bold">Multiplayer (PvP)</div>
+                            <div class="text-sm text-gray-500">2-4 Players local competition</div>
+                        </div>
+                    </button>
+                    <button onclick="selectMode('pva')" class="p-4 border-2 border-blue-100 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left flex items-center">
+                        <span class="text-3xl mr-4">🤖</span>
+                        <div>
+                            <div class="font-bold">Solo vs AI</div>
+                            <div class="text-sm text-gray-500">Compete against corporate AI</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHARACTER SELECTION -->
+        <div id="char-screen" class="overlay hidden">
+            <div class="modal-content">
+                <h2 id="char-title" class="text-2xl font-bold text-center mb-6">Select Your Professional Profile</h2>
+                <div class="grid grid-cols-2 gap-4" id="char-list">
+                    <!-- Dynamic Char Cards -->
+                </div>
+                <button id="start-game-btn" onclick="initiateGame()" class="hidden w-full mt-6 bg-green-600 text-white py-3 rounded-lg font-bold">Launch Career</button>
+            </div>
+        </div>
+
+        <!-- QUIZ MODAL -->
+        <div id="quiz-screen" class="overlay hidden">
+            <div class="modal-content">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold">PROMOTION QUIZ</span>
+                    <span id="quiz-timer" class="text-red-500 font-bold text-xl">10s</span>
+                </div>
+                <h3 id="quiz-question" class="text-lg font-bold mb-6">Question text goes here?</h3>
+                <div id="quiz-options" class="space-y-3">
+                    <!-- Options -->
+                </div>
+            </div>
+        </div>
+
+        <!-- GAME INTERFACE -->
+        <div id="game-ui" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Left Panel: Stats -->
+            <div class="lg:col-span-3 space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="text-2xl">📈</span>
+                        <h2 class="font-bold text-xl text-blue-900">Career Status</h2>
+                    </div>
+                    <div id="player-status-list" class="space-y-4">
+                        <!-- Player Progress Cards -->
+                    </div>
+                </div>
+
+                <div class="bg-blue-900 text-white p-6 rounded-2xl shadow-lg">
+                    <div id="turn-indicator" class="text-center">
+                        <p class="text-blue-200 text-sm uppercase tracking-widest mb-1">Current Turn</p>
+                        <h3 id="active-player-name" class="text-2xl font-bold">Loading...</h3>
+                        <div id="ai-status" class="hidden text-xs italic mt-2 animate-pulse">AI is analyzing next move...</div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 class="font-bold mb-2">History</h3>
+                    <div id="game-log" class="text-xs h-32 overflow-y-auto space-y-1 text-gray-500">
+                        <div>Welcome to Human Hustle.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Middle Panel: Board -->
+            <div class="lg:col-span-6 flex flex-col items-center">
+                <div id="game-board"></div>
+                
+                <div class="mt-8 flex items-center gap-8">
+                    <div id="dice-container" class="flex flex-col items-center">
+                        <div id="main-dice" class="dice shadow-xl" onclick="handleDiceRoll()">🎲</div>
+                        <p class="mt-2 font-bold text-gray-600">Roll Dice</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Info -->
+            <div class="lg:col-span-3 space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 class="font-bold text-blue-900 border-b pb-2 mb-4">Career Hierarchy</h3>
+                    <ul class="text-xs space-y-2">
+                        <li class="flex justify-between"><span>CEO</span> <span class="font-bold">91-100</span></li>
+                        <li class="flex justify-between"><span>Director</span> <span class="font-bold">81-90</span></li>
+                        <li class="flex justify-between"><span>Manager</span> <span class="font-bold">71-80</span></li>
+                        <li class="flex justify-between"><span>Asst Manager</span> <span class="font-bold">61-70</span></li>
+                        <li class="flex justify-between"><span>Team Leader</span> <span class="font-bold">51-60</span></li>
+                        <li class="flex justify-between"><span>Sr Associate</span> <span class="font-bold">41-50</span></li>
+                        <li class="flex justify-between"><span>Associate</span> <span class="font-bold">31-40</span></li>
+                        <li class="flex justify-between"><span>Junior</span> <span class="font-bold">21-30</span></li>
+                        <li class="flex justify-between"><span>Intern</span> <span class="font-bold">11-20</span></li>
+                        <li class="flex justify-between"><span>Graduate</span> <span class="font-bold">1-10</span></li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <button onclick="location.reload()" class="w-full text-sm font-bold text-gray-400 hover:text-red-500 transition-colors">RESTART CAREER</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- WIN SCREEN -->
+        <div id="win-screen" class="overlay hidden">
+            <div class="modal-content text-center">
+                <div class="text-6xl mb-4">🎊</div>
+                <h2 class="text-3xl font-bold text-blue-900 mb-2">Congratulations!</h2>
+                <p id="winner-text" class="text-xl font-semibold mb-6">You became the CEO!</p>
+                <div class="bg-blue-50 p-4 rounded-xl mb-6">
+                    <p class="text-sm italic">"The only way to do great work is to love what you do."</p>
+                </div>
+                <button onclick="location.reload()" class="w-full bg-blue-800 text-white py-3 rounded-xl font-bold">START NEW HUSTLE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIO ELEMENTS (Placeholders) -->
+    <audio id="sfx-roll" src="https://assets.mixkit.co/active_storage/sfx/2004/2004-preview.mp3"></audio>
+    <audio id="sfx-correct" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
+    <audio id="sfx-wrong" src="https://assets.mixkit.co/active_storage/sfx/256/256-preview.mp3"></audio>
+    <audio id="sfx-climb" src="https://assets.mixkit.co/active_storage/sfx/1431/1431-preview.mp3"></audio>
+
+    <script>
+        // --- CONSTANTS & CONFIG ---
+        const LADDERS = { 4: 14, 9: 31, 20: 38, 28: 84, 40: 59, 63: 81 };
+        const SNAKES = { 17: 7, 54: 34, 62: 19, 64: 60, 87: 24, 95: 75 };
+        const SNAKE_MSGS = {
+            17: "Missed Deadline — Move Back",
+            54: "Poor Communication — Slide Down",
+            62: "Conflict in Team — Step Back",
+            64: "Low Productivity — Move Down",
+            87: "Project Failure — Slide Back",
+            95: "Major Error — Slide Back"
+        };
+
+        const AVATARS = [
+            { id: 1, name: 'Software Engineer', icon: '👨‍💻', color: '#3b82f6' },
+            { id: 2, name: 'Business Analyst', icon: '👩‍💼', color: '#10b981' },
+            { id: 3, name: 'Marketing Exec', icon: '📊', color: '#f59e0b' },
+            { id: 4, name: 'Entrepreneur', icon: '🚀', color: '#8b5cf6' }
+        ];
+
+        const QUIZ_BANK = [
+            { q: "What improves teamwork most?", a: ["Communication", "Ignoring", "Micromanaging", "Competition"], c: 0 },
+            { q: "What helps meet deadlines?", a: ["Procrastinating", "Planning", "Multitasking", "Panicking"], c: 1 },
+            { q: "HTML stands for?", a: ["Hyper Text Markup Language", "High Tech Main Loop", "Home Tool Markup", "None"], c: 0 },
+            { q: "What improves focus?", a: ["Noise", "Time Management", "Social Media", "Constant Meetings"], c: 1 },
+            { q: "Which tool is for coding?", a: ["Excel", "Photoshop", "VS Code", "Word"], c: 2 },
+            { q: "A 'Burn Rate' refers to:", a: ["Overtime", "Spending Capital", "Workplace Stress", "Fire Safety"], c: 1 },
+            { q: "What is a 'Silo' in corporate?", a: ["Grain storage", "Isolated Department", "A tall building", "A promotion"], c: 1 },
+            { q: "Agile is a:", a: ["Software", "Methodology", "Meeting type", "Company"], c: 1 },
+            { q: "KPI stands for:", a: ["Key Performance Indicator", "Key Profit Increase", "Keep People Informed", "Knowledge Power Index"], c: 0 },
+            { q: "The 'C' in CEO stands for:", a: ["Corporate", "Central", "Chief", "Company"], c: 2 },
+            { q: "Networking is best for:", a: ["Finding Wi-Fi", "Career Growth", "Fixing Cables", "Gaming"], c: 1 },
+            { q: "What is 'Scope Creep'?", a: ["New hires", "Project growth", "Stalking", "Cleaning"], c: 1 },
+            { q: "A 'Stakeholder' is:", a: ["A chef", "Someone invested in project", "A security guard", "A vampire hunter"], c: 1 },
+            { q: "Brainstorming is used for:", a: ["Weather forecasts", "Generating ideas", "Cleaning", "Sleeping"], c: 1 },
+            { q: "What is 'B2B'?", a: ["Back to Business", "Business to Business", "Back to Base", "Bottom to Board"], c: 1 },
+            { q: "Burnout is caused by:", a: ["Excessive Work", "Vacation", "Short meetings", "Coffee"], c: 0 },
+            { q: "An 'Elevator Pitch' should be:", a: ["Long", "Short & Persuasive", "About elevators", "Silent"], c: 1 },
+            { q: "What is 'Scalability'?", a: ["Weight loss", "Handling Growth", "Climbing walls", "Cleaning"], c: 1 },
+            { q: "CRM software handles:", a: ["Cooking", "Customer Relations", "Coding", "Cleaning"], c: 1 },
+            { q: "A 'Unicorn' startup is worth:", a: ["$1 Million", "$1 Billion+", "Nothing", "$100k"], c: 1 },
+            { q: "SaaS stands for:", a: ["Service as a Software", "Software as a Service", "System and Software", "Sales and Service"], c: 1 },
+            { q: "Phishing is a form of:", a: ["Outdoor sport", "Cyber Attack", "Management", "Recruiting"], c: 1 },
+            { q: "An 'Asset' is something you:", a: ["Owe", "Own", "Discard", "Lose"], c: 1 },
+            { q: "ROI stands for:", a: ["Rate of Interest", "Return on Investment", "Real Online Income", "Rest on Idea"], c: 1 },
+            { q: "UI/UX design focuses on:", a: ["Databases", "User Experience", "Hardware", "Legalities"], c: 1 }
+        ];
+
+        // --- STATE ---
+        let gameMode = 'pvp'; // pvp or pva
+        let players = [];
+        let currentPlayerIndex = 0;
+        let isRolling = false;
+        let quizTimer = null;
+
+        // --- UI INITIALIZATION ---
+        function showModeSelection() {
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('mode-screen').classList.remove('hidden');
+        }
+
+        function selectMode(mode) {
+            gameMode = mode;
+            document.getElementById('mode-screen').classList.add('hidden');
+            document.getElementById('char-screen').classList.remove('hidden');
+            renderCharacterSelection();
+        }
+
+        function renderCharacterSelection() {
+            const list = document.getElementById('char-list');
+            list.innerHTML = '';
+            AVATARS.forEach(av => {
+                const card = document.createElement('div');
+                card.className = `p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-blue-500 transition-all text-center selection-card`;
+                card.id = `char-card-${av.id}`;
+                card.innerHTML = `
+                    <div class="text-4xl mb-2">${av.icon}</div>
+                    <div class="font-bold text-sm">${av.name}</div>
+                `;
+                card.onclick = () => toggleCharacter(av, card);
+                list.appendChild(card);
+            });
+            
+            if(gameMode === 'pva') {
+                document.getElementById('char-title').innerText = "Select Your Character";
+            } else {
+                document.getElementById('char-title').innerText = "Select 2-4 Players";
+            }
+        }
+
+        function toggleCharacter(av, element) {
+            const index = players.findIndex(p => p.id === av.id);
+            if (index > -1) {
+                players.splice(index, 1);
+                element.classList.remove('border-blue-500', 'bg-blue-50');
+            } else {
+                if (gameMode === 'pvp' && players.length >= 4) return;
+                if (gameMode === 'pva' && players.length >= 1) return;
+                
+                players.push({
+                    ...av,
+                    pos: 1,
+                    rank: 'Fresh Graduate',
+                    isAI: false
+                });
+                element.classList.add('border-blue-500', 'bg-blue-50');
+            }
+            
+            const startBtn = document.getElementById('start-game-btn');
+            if (players.length >= (gameMode === 'pva' ? 1 : 2)) {
+                startBtn.classList.remove('hidden');
+            } else {
+                startBtn.classList.add('hidden');
+            }
+        }
+
+        function initiateGame() {
+            if (gameMode === 'pva') {
+                players.push({
+                    id: 99,
+                    name: 'Corporate AI',
+                    icon: '🤖',
+                    color: '#4b5563',
+                    pos: 1,
+                    rank: 'Fresh Graduate',
+                    isAI: true
+                });
+            }
+            
+            document.getElementById('char-screen').classList.add('hidden');
+            document.getElementById('game-ui').classList.remove('hidden');
+            createBoard();
+            updatePlayerStats();
+            createTokens();
+            updateTurnIndicator();
+        }
+
+        // --- BOARD LOGIC ---
+        function createBoard() {
+            const board = document.getElementById('game-board');
+            board.innerHTML = '';
+            
+            // Build 100 cells, standard snake/ladder snaking pattern
+            for (let r = 9; r >= 0; r--) {
+                for (let c = 0; c < 10; c++) {
+                    const col = (r % 2 === 0) ? (9 - c) : c;
+                    const val = (r * 10) + col + 1;
+                    
+                    const cell = document.createElement('div');
+                    cell.className = `cell tier-bg-${Math.floor((val - 1) / 10)}`;
+                    cell.id = `cell-${val}`;
+                    
+                    let content = `<span class="cell-label">${val}</span>`;
+                    
+                    if (LADDERS[val]) content += `<span class="connection-icon">📈</span>`;
+                    if (SNAKES[val]) content += `<span class="connection-icon">📉</span>`;
+                    if (val === 100) content += `<span class="font-bold">CEO</span>`;
+                    
+                    cell.innerHTML = content;
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function createTokens() {
+            players.forEach((p, idx) => {
+                const token = document.createElement('div');
+                token.id = `token-${idx}`;
+                token.className = 'player-token';
+                token.style.backgroundColor = p.color;
+                token.innerText = p.icon;
+                document.getElementById('game-board').appendChild(token);
+                moveTokenToCell(idx, 1);
+            });
+        }
+
+        function moveTokenToCell(playerIdx, cellVal) {
+            const cell = document.getElementById(`cell-${cellVal}`);
+            const token = document.getElementById(`token-${playerIdx}`);
+            if (!cell || !token) return;
+
+            // Offset tokens slightly if multiple players are on same cell
+            const offset = playerIdx * 4;
+            token.style.left = `${cell.offsetLeft + 5 + offset}px`;
+            token.style.top = `${cell.offsetTop + 5 + offset}px`;
+        }
+
+        // --- GAMEPLAY MECHANICS ---
+        function handleDiceRoll() {
+            if (isRolling) return;
+            const player = players[currentPlayerIndex];
+            if (player.isAI) return; // Prevent clicking during AI turn
+
+            performRoll();
+        }
+
+        async function performRoll() {
+            isRolling = true;
+            const diceEl = document.getElementById('main-dice');
+            diceEl.classList.add('rolling');
+            playSound('sfx-roll');
+
+            // Wait for animation
+            await new Promise(r => setTimeout(r, 800));
+            
+            const roll = Math.floor(Math.random() * 6) + 1;
+            diceEl.classList.remove('rolling');
+            diceEl.innerText = getDiceEmoji(roll);
+            
+            isRolling = false;
+            await processMove(currentPlayerIndex, roll);
+        }
+
+        async function processMove(pIdx, roll) {
+            const player = players[pIdx];
+            let newPos = player.pos + roll;
+
+            log(`${player.name} rolled a ${roll}`);
+
+            if (newPos > 100) {
+                log(`${player.name} needs exactly ${100 - player.pos} to win.`);
+                nextTurn();
+                return;
+            }
+
+            // Step by step animation
+            for (let i = player.pos + 1; i <= newPos; i++) {
+                player.pos = i;
+                moveTokenToCell(pIdx, i);
+                await new Promise(r => setTimeout(r, 200));
+            }
+
+            player.rank = getRank(player.pos);
+            updatePlayerStats();
+
+            // Check Special Squares
+            if (LADDERS[player.pos]) {
+                if (player.isAI) {
+                    // AI automatic success for simplicity or random
+                    if(Math.random() > 0.3) {
+                        await climbLadder(pIdx, LADDERS[player.pos]);
+                    } else {
+                        log(`AI missed the promotion opportunity.`);
+                        nextTurn();
+                    }
+                } else {
+                    triggerQuiz(pIdx, LADDERS[player.pos]);
+                }
+                return; 
+            } 
+            
+            if (SNAKES[player.pos]) {
+                await slideSnake(pIdx, SNAKES[player.pos]);
+                return;
+            }
+
+            if (player.pos === 100) {
+                showWin(player);
+                return;
+            }
+
+            nextTurn();
+        }
+
+        async function climbLadder(pIdx, target) {
+            log(`${players[pIdx].name} earned a Promotion!`);
+            playSound('sfx-climb');
+            players[pIdx].pos = target;
+            moveTokenToCell(pIdx, target);
+            players[pIdx].rank = getRank(target);
+            updatePlayerStats();
+            await new Promise(r => setTimeout(r, 600));
+            nextTurn();
+        }
+
+        async function slideSnake(pIdx, target) {
+            const msg = SNAKE_MSGS[players[pIdx].pos] || "Mistake made — Slide Down";
+            log(`${players[pIdx].name}: ${msg}`);
+            playSound('sfx-wrong');
+            players[pIdx].pos = target;
+            moveTokenToCell(pIdx, target);
+            players[pIdx].rank = getRank(target);
+            updatePlayerStats();
+            await new Promise(r => setTimeout(r, 600));
+            nextTurn();
+        }
+
+        // --- QUIZ SYSTEM ---
+        function triggerQuiz(pIdx, target) {
+            const quiz = QUIZ_BANK[Math.floor(Math.random() * QUIZ_BANK.length)];
+            const screen = document.getElementById('quiz-screen');
+            const qText = document.getElementById('quiz-question');
+            const options = document.getElementById('quiz-options');
+            const timerEl = document.getElementById('quiz-timer');
+            
+            qText.innerText = quiz.q;
+            options.innerHTML = '';
+            screen.classList.remove('hidden');
+
+            let timeLeft = 10;
+            timerEl.innerText = `${timeLeft}s`;
+            
+            const countdown = setInterval(() => {
+                timeLeft--;
+                timerEl.innerText = `${timeLeft}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(countdown);
+                    closeQuiz(false);
+                }
+            }, 1000);
+
+            quiz.a.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3 border rounded-lg hover:bg-blue-50 transition-colors font-medium";
+                btn.innerText = opt;
+                btn.onclick = () => {
+                    clearInterval(countdown);
+                    closeQuiz(i === quiz.c);
+                };
+                options.appendChild(btn);
+            });
+
+            function closeQuiz(success) {
+                screen.classList.add('hidden');
+                if (success) {
+                    playSound('sfx-correct');
+                    climbLadder(pIdx, target);
+                } else {
+                    playSound('sfx-wrong');
+                    log(`${players[pIdx].name} failed the promotion quiz.`);
+                    nextTurn();
+                }
+            }
+        }
+
+        // --- TURN MANAGEMENT ---
+        function nextTurn() {
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            updateTurnIndicator();
+            
+            const nextPlayer = players[currentPlayerIndex];
+            if (nextPlayer.isAI) {
+                handleAITurn();
+            }
+        }
+
+        async function handleAITurn() {
+            document.getElementById('ai-status').classList.remove('hidden');
+            await new Promise(r => setTimeout(r, 1500));
+            document.getElementById('ai-status').classList.add('hidden');
+            performRoll();
+        }
+
+        function updateTurnIndicator() {
+            const p = players[currentPlayerIndex];
+            const nameEl = document.getElementById('active-player-name');
+            nameEl.innerText = p.name;
+            nameEl.style.color = p.color;
+
+            // Highlight active token
+            players.forEach((_, i) => {
+                document.getElementById(`token-${i}`).classList.toggle('active-turn', i === currentPlayerIndex);
+            });
+        }
+
+        // --- UTILS ---
+        function getRank(pos) {
+            if (pos >= 91) return "CEO";
+            if (pos >= 81) return "Director";
+            if (pos >= 71) return "Manager";
+            if (pos >= 61) return "Assistant Manager";
+            if (pos >= 51) return "Team Leader";
+            if (pos >= 41) return "Senior Associate";
+            if (pos >= 31) return "Associate";
+            if (pos >= 21) return "Junior Employee";
+            if (pos >= 11) return "Intern";
+            return "Fresh Graduate";
+        }
+
+        function updatePlayerStats() {
+            const list = document.getElementById('player-status-list');
+            list.innerHTML = '';
+            players.forEach(p => {
+                const card = document.createElement('div');
+                card.className = "bg-gray-50 p-3 rounded-lg border border-gray-100";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold" style="color:${p.color}">${p.icon} ${p.name}</span>
+                        <span class="text-[10px] font-bold text-gray-400">POS: ${p.pos}</span>
+                    </div>
+                    <div class="text-[10px] uppercase font-bold text-blue-800 mb-1">${p.rank}</div>
+                    <div class="progress-container">
+                        <div class="progress-fill" style="width: ${p.pos}%"></div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function getDiceEmoji(n) {
+            const faces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+            return faces[n - 1];
+        }
+
+        function log(msg) {
+            const logEl = document.getElementById('game-log');
+            const entry = document.createElement('div');
+            entry.innerText = `• ${msg}`;
+            logEl.prepend(entry);
+        }
+
+        function playSound(id) {
+            const sfx = document.getElementById(id);
+            if (sfx) {
+                sfx.currentTime = 0;
+                sfx.play().catch(() => {}); // Catch browser blocking audio
+            }
+        }
+
+        function showWin(player) {
+            document.getElementById('winner-text').innerText = `${player.name} became the CEO in Human Hustle!`;
+            document.getElementById('win-screen').classList.remove('hidden');
+        }
+
+        // Global Event for window resize to adjust tokens
+        window.addEventListener('resize', () => {
+            players.forEach((_, i) => moveTokenToCell(i, players[i].pos));
+        });
+    </script>
+</body>
+</html>
